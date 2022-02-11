@@ -15,8 +15,21 @@ def current_date_time():
  dt_string = now.strftime("Date:%d/%m/%Y Time:%H:%M:%S")
  return dt_string
 
-def get_coin_data():
-    print('hi')
+def get_coin_data(coin,custom_frequency = Client.KLINE_INTERVAL_1DAY,custom_start='1 Jan 2021'):
+    close_arr,open_arr,high_arr,low_arr,vol_arr,date_arr= ([] for i in range(6))
+    data = client.get_historical_klines(coin, custom_frequency ,custom_start)
+    for i in data:
+       open_arr.append(float(i[1]))
+       high_arr.append(float(i[2]))
+       low_arr.append(float(i[3]))
+       close_arr.append(float(i[4]))
+       vol_arr.append(float(i[5]))
+       date_arr.append( datetime.fromtimestamp(int(i[6]/1000)))
+    sum_arr = [open_arr,close_arr,high_arr,low_arr,vol_arr,date_arr]
+    np_data = np.array(sum_arr)
+    return np_data
+
+# get_coin_data('BNBUSDT',Client.KLINE_INTERVAL_1DAY)
 
 def get_graph(indicator_val,indicator_name,val,coin,date):
   plt.plot(date,indicator_val,label=indicator_name, linestyle='--')
@@ -24,40 +37,37 @@ def get_graph(indicator_val,indicator_name,val,coin,date):
   plt.legend(loc="best")
   plt.show()
 
+def get_single_graph(indicator_val,indicator_name,date):
+  plt.plot(date,indicator_val,label=indicator_name, linestyle='--')
+  plt.legend(loc="best")
+  plt.show()
+
 def get_current_price(coin):
-  price = client.get_historical_klines(coin, Client.KLINE_INTERVAL_1MINUTE,"1 minute ago")
-  print(current_date_time())
-  current_price = ((float)(price[0][1]) + (float)(price[0][2]) + (float)(price[0][3]) + (float)(price[0][4]))/4
+  price = get_coin_data(coin,Client.KLINE_INTERVAL_1MINUTE,"1 minute ago")
+  current_price = ((float)(price[0][0]) + (float)(price[1][0]) + (float)(price[2][0]) + (float)(price[3][0]))/4
   print(coin + " : " ,"{:.2f}".format(current_price))
 
 #trend indicator
 def EMA(coin,interval):
-    close_arr = []
-    date_arr = []
-    close = client.get_historical_klines(coin, Client.KLINE_INTERVAL_1DAY,str(1000) + " day ago")
-    for i in close:
-       close_arr.append(float(i[4]))
-       print(date_arr)
-       date_arr.append( datetime.fromtimestamp(int(i[6]/1000)))
-    float_data = np.array(close_arr)
-    real = talib.EMA(float_data, timeperiod=interval)
-    get_graph(real,"EMA" + str(interval),float_data,coin,date_arr)
+  data = get_coin_data(coin)
+  close_data = [float(x) for x in data[1]]
+  for i in close_data:
+    print(type(i))
+  real = talib.EMA(np.array(close_data), timeperiod=interval)
+  get_graph(real,"EMA" + str(interval),close_data,coin,data[5])
 
-#momentum indicator
-def ADX():
-    high_arr = []
-    low_arr = []
-    close_arr = []
-    date_arr = []
-    close = client.get_historical_klines(coin, Client.KLINE_INTERVAL_1DAY,str(1000) + " day ago")
-    for i in close:
-       close_arr.append(float(i[4]))
-       print(date_arr)
-       date_arr.append( datetime.fromtimestamp(int(i[6]/1000)))
-    float_data = np.array(close_arr)
-    real = talib.EMA(float_data, timeperiod=interval)
-    get_graph(real,"EMA" + str(interval),float_data,coin,date_arr)
+#momentum indicator good for long trade
+def ADX(coin,interval):
+    data = get_coin_data(coin)
+    close_data = [float(x) for x in data[1]]
+    low_data = [float(x) for x in data[3]]
+    high_data = [float(x) for x in data[2]]
 
+    real = talib.ADX(np.array(high_data), np.array(low_data), np.array(close_data), timeperiod=interval)
+    get_single_graph(real,"ADX",data[5])
+
+def SAR():
+  real = SAR(high, low, acceleration=0.02, maximum=0.20)
 
 
 # indicators
